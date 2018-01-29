@@ -2,8 +2,10 @@ const express = require('express');
 const app = express();
 const morganLog = require('morgan');
 const bodyParser = require('body-parser');
-
+const mongoose = require('mongoose');
 const usersRoute = require('./api/routes/users/users');
+
+mongoose.connect(`mongodb://admin:${process.env.MONGO_ATLAS_PW}@jiratrainee-shard-00-00-stvuc.mongodb.net:27017,jiratrainee-shard-00-01-stvuc.mongodb.net:27017,jiratrainee-shard-00-02-stvuc.mongodb.net:27017/test?ssl=true&replicaSet=JiraTrainee-shard-0&authSource=admin`)
 
 app.use(morganLog('dev'));
 app.use(bodyParser.urlencoded({extended: false}));
