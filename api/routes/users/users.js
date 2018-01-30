@@ -6,7 +6,12 @@ const User = require('../../models/user');
 // GET users get all users
 router.get('/', (req, res, next) => {
     User.find().exec()
-        .then(result => res.status(200).json(result))
+        .then(result => { 
+            res.status(200).json(result);
+        })
+        .then(res => 
+            console.log(res)
+        )
         .catch(error => res.status(500).json({
             message: error.message
         }));
@@ -76,9 +81,7 @@ router.delete('/:userId', (req, res, next) => {
         .then(result => {
             res.status(200).json(result) 
         })
-        .catch(error => res.status(500).json({
-            error: error
-        }));
+        .catch(error => next(error));
 });
 
 module.exports = router;

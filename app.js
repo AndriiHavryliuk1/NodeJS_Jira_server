@@ -3,26 +3,25 @@ const app = express();
 const morganLog = require('morgan');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
-const usersRoute = require('./api/routes/users/users');
+const CORS = require('cors');
+const bluebird = require('bluebird');
 
-mongoose.connect(`mongodb://admin:${process.env.MONGO_ATLAS_PW}@jiratrainee-shard-00-00-stvuc.mongodb.net:27017,jiratrainee-shard-00-01-stvuc.mongodb.net:27017,jiratrainee-shard-00-02-stvuc.mongodb.net:27017/test?ssl=true&replicaSet=JiraTrainee-shard-0&authSource=admin`)
+const usersRoute = require('./api/routes/users/users');
+const ticketsRoute = require('./api/routes/tickets/tickets');
+
+mongoose.connect(`mongodb://admin:admin@jiratrainee-shard-00-00-stvuc.mongodb.net:27017,jiratrainee-shard-00-01-stvuc.mongodb.net:27017,jiratrainee-shard-00-02-stvuc.mongodb.net:27017/test?ssl=true&replicaSet=JiraTrainee-shard-0&authSource=admin`)
+
+mongoose.Promise = require('bluebird');
 
 app.use(morganLog('dev'));
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 
 // Allow CORS
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    if (req.method === 'OPTIONS') {
-        res.header('Access-Control-Allow-Methods', 'PUT, POST, PATCH, DELETE, GET');
-        return res.status(200).json({});
-    }
-    next();
-});
+app.use(CORS());
 
 app.use('/users', usersRoute);
+app.use('/tickets', ticketsRoute);
 
 // handle 404 errors
 app.use((req, res, next) => {
