@@ -1,14 +1,15 @@
 const mongoose = require('mongoose');
 
-const ticketSchema = mongoose.Schema({
+const taskSchema = mongoose.Schema({
     _id: mongoose.Schema.Types.ObjectId,
+    task_id: Number,
     name: { type: String, require: true },
     description: String,
     parent_id: mongoose.Schema.Types.ObjectId,
-    children_ids: Array,
+    children_ids: { type:Array, default: [] },
     user_id: mongoose.Schema.Types.ObjectId,
     column_id: mongoose.Schema.Types.ObjectId,
     status: String
 });
 
-module.exports = mongoose.model('Ticket', ticketSchema);
+module.exports = mongoose.model('Task', taskSchema);

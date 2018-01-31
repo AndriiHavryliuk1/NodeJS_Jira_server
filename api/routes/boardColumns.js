@@ -1,36 +1,32 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
-const Ticket = require('../../models/ticket');
+const BoardColumn = require('../models/boardColumn');
 
-// GET tickets get all tickets
+// GET get all boardColumns
 router.get('/', (req, res, next) => {
-    Ticket.find().exec()
-        .then(result => { 
+    BoardColumn.find().exec()
+        .then(result => {
             res.status(200).json(result);
         })
-        .then(res => 
-            console.log(res)
-        )
         .catch(error => res.status(500).json({
             message: error.message
         }));
 });
 
-
+// POST create new boardColumn
 router.post("/", (req, res, next) => {
-    const ticket = new Ticket({
+    const ticket = new BoardColumn({
         _id: mongoose.Types.ObjectId(),
         name: req.body.name,
-        description: req.body.description
+        persistentName: req.body.persistentName,
     });
 
     ticket.save()
         .then(result => res.status(200).json(result))
-        .catch(error => res.status(500).json({ 
+        .catch(error => res.status(500).json({
             error: error
-    }));
+        }));
 });
 
 module.exports = router;
-
