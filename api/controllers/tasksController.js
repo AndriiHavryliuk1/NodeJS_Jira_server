@@ -36,22 +36,35 @@ exports.get_all_tasks = (req, res, next) => {
 
 exports.get_task_by_id = (req, res, next) => {
     const id = req.params.userId;
-
-    Task.findById(id).exec()
-        .then(result => {
-            if (result) {
-                res.status(200).json(result)
-            } else {
-                res.status(404).json({
-                    message: "Object not found!"
-                })
-            }
-
-        })
-        .catch(error => res.status(500).json({
-            message: error.message
-        }));
+    var fullName = "";
+    findElement(id, req, res, next);
 };
+
+function findElement(id, req, res, next) {
+    Task.findById(id).exec()
+    .then(result => {
+        if (result) {
+            if (result.parent_id) {
+
+               return result;
+            }
+            result = result._doc;
+            result.fullPath = fullName;
+            res.status(200).json(result)
+        } else {
+            res.status(404).json({
+                message: "Object not found!"
+            })
+        }
+
+    }).then(resultNext => {
+        fullName = resultNext.name + "/" +fullName
+        return findElement(resultNext.parent_id, req, res, next);
+    })
+    .catch(error => res.status(500).json({
+        message: error.message
+    }));
+}
 
 
 exports.create_task = (req, res, next) => {
