@@ -4,18 +4,18 @@ const mongoose = require('mongoose');
 exports.get_all_tasks = (req, res, next) => {
     var allTasksTree = [];
     Task.find().exec().then(result => {
-        result = result.map(r => {return r._doc;})
-            for (let i = 0; i < result.length; i++) {
-                result[i].childrens = [];
-                if (result[i].children_ids.length) {
-                    result[i].childrens= result[i].childrens.concat(getTreeWithoutPromises(result[i], result));
-                }
-                allTasksTree.push(result[i]);
+        result = result.map(r => { return r._doc; })
+        for (let i = 0; i < result.length; i++) {
+            result[i].childrens = [];
+            if (result[i].children_ids.length) {
+                result[i].childrens = result[i].childrens.concat(getTreeWithoutPromises(result[i], result));
             }
-            res.status(200).json(allTasksTree);
-        }).catch(error => res.status(500).json({
-            message: error.message
-        }));
+            allTasksTree.push(result[i]);
+        }
+        res.status(200).json(allTasksTree);
+    }).catch(error => res.status(500).json({
+        message: error.message
+    }));
 
 
     function getTreeWithoutPromises(currentTask, allTasks) {
@@ -35,36 +35,49 @@ exports.get_all_tasks = (req, res, next) => {
 
 
 exports.get_task_by_id = (req, res, next) => {
-    const id = req.params.userId;
-    var fullName = "";
+    const id = req.params.taskId;
+    var fullPathName = "";
     findElement(id, req, res, next);
-};
 
-function findElement(id, req, res, next) {
-    Task.findById(id).exec()
-    .then(result => {
+    async function findElement(id, req, res, next) {
+        var result = await Task.findById(id).exec()
         if (result) {
             if (result.parent_id) {
-
-               return result;
+                fullPathName += "/" + result.name;
+                return await findFullPathName(result.parent_id)
+                    .then((fullPathName) => {
+                        result._doc.fullPathName = fullPathName;
+                        res.status(200).json(result);
+                    });
+            } else {
+                res.status(200).json(result);
             }
-            result = result._doc;
-            result.fullPath = fullName;
-            res.status(200).json(result)
         } else {
             res.status(404).json({
                 message: "Object not found!"
             })
         }
+        return result;
+    }
 
-    }).then(resultNext => {
-        fullName = resultNext.name + "/" +fullName
-        return findElement(resultNext.parent_id, req, res, next);
-    })
-    .catch(error => res.status(500).json({
-        message: error.message
-    }));
-}
+    async function findFullPathName(id) {
+        var result = await Task.findById(id).exec()
+        if (result) {
+            if (result.parent_id) {
+                fullPathName += "/" + result.name
+                return findFullPathName(result.parent_id);
+            }
+            return result.name + fullPathName
+        } else {
+            res.status(404).json({
+                message: "Object not found!"
+            })
+        }
+        return result;
+    }
+};
+
+
 
 
 exports.create_task = (req, res, next) => {
