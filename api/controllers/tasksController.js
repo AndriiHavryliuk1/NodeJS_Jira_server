@@ -2,27 +2,35 @@ const Task = require('../models/task');
 const mongoose = require('mongoose');
 
 exports.get_all_tasks = (req, res, next) => {
-    Task.find().exec()
-        .then(result => {
-
-            res.status(200).json(result);
-        })
-        .catch(error => res.status(500).json({
+    var allTasksTree = [];
+    Task.find().exec().then(result => {
+        result = result.map(r => {return r._doc;})
+            for (let i = 0; i < result.length; i++) {
+                result[i].childrens = [];
+                if (result[i].children_ids.length) {
+                    result[i].childrens= result[i].childrens.concat(getTreeWithoutPromises(result[i], result));
+                }
+                allTasksTree.push(result[i]);
+            }
+            res.status(200).json(allTasksTree);
+        }).catch(error => res.status(500).json({
             message: error.message
         }));
 
-        async function getByIds(chield_ids) {
-        
-            model.find({
-                '_id': { $in: [
-                    mongoose.Types.ObjectId('4ed3ede8844f0f351100000c'),
-                    mongoose.Types.ObjectId('4ed3f117a844e0471100000d'), 
-                    mongoose.Types.ObjectId('4ed3f18132f50c491100000e')
-                ]}
-            }, function(err, docs){
-                 console.log(docs);
-            });
-        }
+
+    function getTreeWithoutPromises(currentTask, allTasks) {
+        var res = [];
+        allTasks.forEach((task, index) => {
+            if (currentTask.children_ids.indexOf(task._id.toString()) > -1) {
+                if (task.children_ids.length > 0) {
+                    task.childrens = [];
+                    task.childrens = task.childrens.concat(getTreeWithoutPromises(task, allTasks));
+                }
+                res.push(task);
+            }
+        });
+        return res;
+    }
 };
 
 
@@ -47,18 +55,18 @@ exports.get_task_by_id = (req, res, next) => {
 
 
 exports.create_task = (req, res, next) => {
-    Task.find().sort({ task_id: -1 }).limit(1)
-        .then(taskWithMaxId => {
-            console.log(taskWithMaxId);
-            createTask(taskWithMaxId)
-        }).catch(error => {
-            createTask(error);
-        });
+    Task.find().exec().then(allTasks => {
+        var maxId = allTasks.reduce((max, p) => p.task_id > max ? p.task_id : max, allTasks[0].task_id);
+        createTask(maxId)
+    }).catch(error => {
+        // uses for the first create
+        createTask();
+    });
 
-    function createTask(taskWithMaxId) {
+    function createTask(maxId) {
         const task = new Task({
             _id: mongoose.Types.ObjectId(),
-            task_id: ++taskWithMaxId.task_id || 1,
+            task_id: ++maxId || 1,
             name: req.body.name,
             description: req.body.description,
             parent_id: req.body.parent_id,

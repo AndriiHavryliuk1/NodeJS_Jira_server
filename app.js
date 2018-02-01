@@ -11,7 +11,7 @@ const tasksRoute = require('./api/routes/tasks');
 const boardColumnsRoute = require('./api/routes/boardColumns');
 const boardsRoute = require('./api/routes/boards');
 
-mongoose.connect(`mongodb://admin:${process.env.MONGO_ATLAS_PW}@jiratrainee-shard-00-00-stvuc.mongodb.net:27017,jiratrainee-shard-00-01-stvuc.mongodb.net:27017,jiratrainee-shard-00-02-stvuc.mongodb.net:27017/test?ssl=true&replicaSet=JiraTrainee-shard-0&authSource=admin`)
+mongoose.connect(`mongodb://admin:admin@jiratrainee-shard-00-00-stvuc.mongodb.net:27017,jiratrainee-shard-00-01-stvuc.mongodb.net:27017,jiratrainee-shard-00-02-stvuc.mongodb.net:27017/test?ssl=true&replicaSet=JiraTrainee-shard-0&authSource=admin`)
 
 mongoose.Promise = require('bluebird');
 
