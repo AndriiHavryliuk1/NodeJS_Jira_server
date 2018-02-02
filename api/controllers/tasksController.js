@@ -3,34 +3,76 @@ const mongoose = require('mongoose');
 
 exports.get_all_tasks = (req, res, next) => {
     var allTasksTree = [];
-    Task.find().exec().then(result => {
-        result = result.map(r => { return r._doc; })
-        for (let i = 0; i < result.length; i++) {
-            result[i].childrens = [];
-            if (result[i].children_ids.length) {
-                result[i].childrens = result[i].childrens.concat(getTreeWithoutPromises(result[i], result));
-            }
-            allTasksTree.push(result[i]);
-        }
-        res.status(200).json(allTasksTree);
-    }).catch(error => res.status(500).json({
-        message: error.message
-    }));
+    buildTreeWithPromisesUpToDown().then(result => { res.status(200).json(result); })
 
 
-    function getTreeWithoutPromises(currentTask, allTasks) {
-        var res = [];
-        allTasks.forEach((task, index) => {
-            if (currentTask.children_ids.indexOf(task._id.toString()) > -1) {
-                if (task.children_ids.length > 0) {
-                    task.childrens = [];
-                    task.childrens = task.childrens.concat(getTreeWithoutPromises(task, allTasks));
-                }
-                res.push(task);
+    async function buildTreeWithPromisesDownToUp(allTasks) {
+        allTasks.forEach(async task => {
+            if (task.parent_id) {
+                task = await getTreeWithPromises(task, allTasks);
             }
+            console.log(task);
+            allTasksTree.push(task);
+            return task; 
         });
-        return res;
+
+        async function getTreeWithPromises(currentTask, allTasks) {
+            let parentTask = await allTasks.find(x => x._id.toString() === currentTask.parent_id.toString());
+            parentTask.childrens = parentTask.childrens || [];
+            parentTask.childrens.push(currentTask);
+    
+            if (parentTask.parent_id) {
+                parentTask = getTreeWithoutPromises(parentTask, allTasks);
+            }
+    
+            return parentTask;
+        }
     }
+
+    async function buildTreeWithPromisesUpToDown() {
+        let roots = await Task.find().exec();
+        for (let i = 0; i < roots.length; i++) {
+            roots[i]._doc.childrens=[];
+            roots[i]._doc.childrens = await getTreeWithPromises(roots[i]);
+        }
+
+
+        async function getTreeWithPromises(parent) {
+            let childrens = await Task.find().where( { 'parent_id': parent._id}).exec();
+            parent._doc.childrens = childrens;
+            for (let i= 0; i < parent._doc.childrens.length; i++ ) {
+                parent._doc.childrens[i].childrens = [];
+                parent._doc.childrens[i].childrens = await getTreeWithPromises(parent._doc.childrens[i]);
+            }
+    
+            return childrens;
+        }
+        return roots;
+    }
+
+
+    function buildTreeWithoutPromises(allTasks) {
+        allTasks.forEach(task => {
+            if (task.parent_id) {
+                task = getTreeWithoutPromises(task, allTasks);
+            }
+            allTasksTree.push(task);
+        });
+
+        function getTreeWithoutPromises(currentTask, allTasks) {
+            let parentTask = allTasks.find(x => x._id.toString() === currentTask.parent_id.toString());
+            parentTask.childrens = parentTask.childrens || [];
+            parentTask.childrens.push(currentTask);
+    
+            if (parentTask.parent_id) {
+                parentTask = getTreeWithoutPromises(parentTask, allTasks);
+            }
+    
+            return parentTask;
+        }
+    }
+
+
 };
 
 
@@ -42,20 +84,21 @@ exports.get_task_by_id = (req, res, next) => {
     async function findElement(id, req, res, next) {
         var result = await Task.findById(id).exec()
         if (result) {
+            fullPathName += result.name;
             if (result.parent_id) {
-                fullPathName += "/" + result.name;
                 return await findFullPathName(result.parent_id)
                     .then((fullPathName) => {
                         result._doc.fullPathName = fullPathName;
                         res.status(200).json(result);
                     });
             } else {
+                result._doc.fullPathName = fullPathName;
                 res.status(200).json(result);
             }
         } else {
             res.status(404).json({
                 message: "Object not found!"
-            })
+            });
         }
         return result;
     }
@@ -64,17 +107,18 @@ exports.get_task_by_id = (req, res, next) => {
         var result = await Task.findById(id).exec()
         if (result) {
             if (result.parent_id) {
-                fullPathName += "/" + result.name
+                fullPathName = result.name + "/" + fullPathName;
                 return findFullPathName(result.parent_id);
             }
-            return result.name + fullPathName
+            return result.name + "/" + fullPathName
         } else {
             res.status(404).json({
                 message: "Object not found!"
-            })
+            });
         }
         return result;
     }
+
 };
 
 
