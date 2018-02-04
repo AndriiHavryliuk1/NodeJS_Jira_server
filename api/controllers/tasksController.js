@@ -1,3 +1,5 @@
+'use strict';
+
 const Task = require('../models/task');
 const mongoose = require('mongoose');
 
@@ -11,40 +13,38 @@ exports.get_all_tasks = (req, res, next) => {
             if (task.parent_id) {
                 task = await getTreeWithPromises(task, allTasks);
             }
-            console.log(task);
             allTasksTree.push(task);
-            return task; 
+            return task;
         });
 
         async function getTreeWithPromises(currentTask, allTasks) {
             let parentTask = await allTasks.find(x => x._id.toString() === currentTask.parent_id.toString());
             parentTask.childrens = parentTask.childrens || [];
             parentTask.childrens.push(currentTask);
-    
+
             if (parentTask.parent_id) {
                 parentTask = getTreeWithoutPromises(parentTask, allTasks);
             }
-    
+
             return parentTask;
         }
     }
 
     async function buildTreeWithPromisesUpToDown() {
-        let roots = await Task.find().exec();
+        let roots = await Task.find().where({ 'parent_id': null }).exec();
         for (let i = 0; i < roots.length; i++) {
-            roots[i]._doc.childrens=[];
+            roots[i]._doc.childrens = [];
             roots[i]._doc.childrens = await getTreeWithPromises(roots[i]);
         }
 
-
         async function getTreeWithPromises(parent) {
-            let childrens = await Task.find().where( { 'parent_id': parent._id}).exec();
+            let childrens = await Task.find().where({ 'parent_id': parent._id }).exec();
             parent._doc.childrens = childrens;
-            for (let i= 0; i < parent._doc.childrens.length; i++ ) {
+            for (let i = 0; i < parent._doc.childrens.length; i++) {
                 parent._doc.childrens[i].childrens = [];
                 parent._doc.childrens[i].childrens = await getTreeWithPromises(parent._doc.childrens[i]);
             }
-    
+
             return childrens;
         }
         return roots;
@@ -63,16 +63,14 @@ exports.get_all_tasks = (req, res, next) => {
             let parentTask = allTasks.find(x => x._id.toString() === currentTask.parent_id.toString());
             parentTask.childrens = parentTask.childrens || [];
             parentTask.childrens.push(currentTask);
-    
+
             if (parentTask.parent_id) {
                 parentTask = getTreeWithoutPromises(parentTask, allTasks);
             }
-    
+
             return parentTask;
         }
     }
-
-
 };
 
 
@@ -173,11 +171,18 @@ exports.update_task = (req, res, next) => {
         }));
 };
 
-exports.delete_task = (req, res, next) => {
+exports.delete_task = async (req, res, next) => {
     const id = req.params.taskId;
-    Task.remove({ _id: id }).exec()
-        .then(result => {
-            res.status(200).json(result)
-        })
-        .catch(error => next(error));
+    let result = await Task.findById(id).exec();
+    await updateAllChildrens(result._id, result.parent_id, next)
+    const deleteResult = await Task.remove({ _id: id }).exec()
+    res.status(200).json(deleteResult)
+
+    async function updateAllChildrens(currentId, parentId, next) {
+        return await Task.find().where()
+            .update({ 'parent_id': currentId }, { $set: { parent_id: parentId } }, { multi: true })
+            .exec().catch(error => {
+                next(error)
+            });
+    }
 };

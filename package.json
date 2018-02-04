@@ -23,6 +23,8 @@
     "morgan": "^1.9.0"
   },
   "devDependencies": {
+    "eslint-config-airbnb-base-hf": "^1.10.2",
+    "eslint-config-node": "^2.0.0",
     "nodemon": "^1.14.11"
   }
 }
